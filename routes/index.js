@@ -3,6 +3,7 @@ const router = express.Router()
 const userModel = require('../models/user')
 const postModel = require('../models/post')
 const dp = require('./dpupload')
+const upload = require('./postupload')
 const bcrypt = require('bcrypt')
 const path = require('path')
 const { check, validationResult } = require('express-validator')
@@ -20,7 +21,6 @@ router.post('/api/register', [
         return
     }
     try {
-
         const { fullname, username, password } = req.body
         const salt = await bcrypt.genSalt(10)
         const hash = await bcrypt.hash(password, salt)
@@ -62,11 +62,11 @@ router.post('/api/getuser', async (req, res) => {
 
 router.post('/api/getuserposts', async (req, res) => {
     const user = await userModel.findOne({ username: req.body.user }).select('-salt -hash').populate('posts')
-    res.json(user)
+    res.json(user.posts)
 })
 
 router.post('/api/editdp', dp.single('file'), async (req, res, next) => {
-    
+
     const userdata = await userModel.findOneAndUpdate({ username: req.body.user }, {
         dp: req.file.filename
     }, { new: true })
@@ -122,7 +122,6 @@ router.post('/api/editusername', [
     }
 })
 
-
 router.post('/api/editemail', [
     check('email')
         .notEmpty().withMessage('email cannot be empty'),
@@ -143,8 +142,6 @@ router.post('/api/editemail', [
 
     }
 })
-
-
 
 router.post('/api/editpassword', [
     check('password')
@@ -170,7 +167,6 @@ router.post('/api/editpassword', [
     res.send(userdata)
 })
 
-
 router.post('/api/editbio', [
     check('bio')
         .notEmpty().withMessage('bio cannot be empty'),
@@ -185,32 +181,22 @@ router.post('/api/editbio', [
     res.send(userdata)
 })
 
-
-router.post('/api/post', [
-    check('caption')
-        .notEmpty().withMessage('caption cannot be empty'),
-], dp.single('file'), async (req, res, next) => {
+router.post('/api/uploadpost', upload.single('file'), async (req, res, next) => {
     if (!req.file) {
         res.status(400).json({ error: 'no file' })
         return
     }
-
-    if (validationResult(req).errors.length != 0) {
-
-        res.status(403).send('Fields Cannot be Empty')
-        return
-    }
-
     const userdata = await userModel.findOne({ username: req.body.user })
-    const createdPost = await postModel.create({
+    const createdPost = new postModel({
         post: req.file.filename,
         caption: req.body.caption,
         userid: userdata._id
-    })
-    await createdPost.save()
-    userdata.posts.push(createdPost._id)
-    await userdata.save()
-    res.send(createdPost)
+    });
+    await createdPost.save();
+
+    userdata.posts.push(createdPost._id);
+    await userdata.save();
+    res.status(200).send('done')
 })
 
 router.get('/images/:imageName', (req, res) => {
@@ -230,7 +216,6 @@ router.get('/posts/:imageName', (req, res) => {
 router.get('/api/getallpost', async (req, res) => {
     const posts = await postModel.find({})
     res.json(posts)
-
 })
 
 
