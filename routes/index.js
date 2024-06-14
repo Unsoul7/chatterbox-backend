@@ -56,8 +56,13 @@ router.post('/api/login', [
 })
 
 router.post('/api/getuser', async (req, res) => {
-    const user = await userModel.findOne({ username: req.body.username }).select('-salt -hash')
+    const user = await userModel.findOne({ username: req.body.username }).select('-password')
     res.json(user)
+})
+
+router.post('/api/getpost', async (req, res) => {
+    const userpost = await postModel.findOne({ post : req.body.image }).populate('userid')
+    res.json(userpost)
 })
 
 router.post('/api/getuserposts', async (req, res) => {
@@ -70,7 +75,7 @@ router.post('/api/editdp', dp.single('file'), async (req, res, next) => {
     const userdata = await userModel.findOneAndUpdate({ username: req.body.user }, {
         dp: req.file.filename
     }, { new: true })
-    res.send(userdata)
+    res.send({userdata})
 })
 
 router.post('/api/editname', [
